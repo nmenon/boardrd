@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+#
+# BeaglePlay (AM625 SoC)
+# https://www.beagleboard.org/boards/beagleplay
+
+name: k3-am625-beagleplay
+description: BeagleBoard.org BeaglePlay (TI AM625)
+
+dtbs:
+  - arch/arm64/boot/dts/ti/k3-am625-beagleplay.dtb
+
+workflows:
+  - name: nfs
+    boot_nodes:
+      - ethernet0    # /aliases → CPSW3G port@1
+      - cpsw_port1   # /__symbols__ fallback

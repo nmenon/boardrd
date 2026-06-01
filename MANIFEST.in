@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+
+# Include data files in source distributions and installs
+recursive-include workflows *.yaml
+recursive-include boards *.yaml
+recursive-include templates *.tmpl
+include busybox.config
+include README.md

@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+#
+# BeagleBone AI-64 (J721E SoC)
+# https://www.beagleboard.org/boards/beagleboneai64
+#
+# J721E has no ethernet0 /aliases entry. The MCU-domain CPSW is
+# referenced via /__symbols__ label 'mcu_cpsw'.
+
+name: k3-j721e-beagleboneai64
+description: BeagleBoard.org BeagleBone AI-64 (TI J721E)
+
+dtbs:
+  - arch/arm64/boot/dts/ti/k3-j721e-beagleboneai64.dtb
+
+workflows:
+  - name: nfs
+    boot_nodes:
+      - ethernet0   # /aliases (not present on J721E — skipped with warning)
+      - mcu_cpsw    # /__symbols__ label → /bus@100000/bus@28380000/ethernet@46000000

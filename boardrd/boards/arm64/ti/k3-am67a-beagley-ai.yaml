@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+
+name: k3-am67a-beagley-ai
+description: BeagleBoard.org BeagleY-AI (TI AM67A)
+
+dtbs:
+  - arch/arm64/boot/dts/ti/k3-am67a-beagley-ai.dtb
+
+workflows:
+  - name: nfs
+    boot_nodes:
+      - ethernet0
+      - cpsw_port1

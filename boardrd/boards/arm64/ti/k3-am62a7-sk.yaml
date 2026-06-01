@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+#
+# TI AM62A Starter Kit (SK-AM62A)
+
+name: k3-am62a7-sk
+description: Texas Instruments AM62A Starter Kit
+
+dtbs:
+  - arch/arm64/boot/dts/ti/k3-am62a7-sk.dtb
+
+workflows:
+  - name: mmc
+    boot_nodes:
+      - mmc0    # eMMC
+      - mmc1    # SD card
+  - name: nfs
+    boot_nodes:
+      - ethernet0
+      - cpsw_port1   # /__symbols__ fallback

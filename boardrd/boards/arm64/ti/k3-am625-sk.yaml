@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+#
+# TI AM62x Starter Kit (SK-AM62)
+
+name: k3-am625-sk
+description: Texas Instruments AM62x Starter Kit
+
+dtbs:
+  - arch/arm64/boot/dts/ti/k3-am625-sk.dtb
+
+workflows:
+  - name: mmc
+    boot_nodes:
+      - mmc0    # /bus@f0000/mmc@fa10000 (eMMC)
+      - mmc1    # /bus@f0000/mmc@fa00000 (SD card)
+  - name: nfs
+    boot_nodes:
+      - ethernet0    # /aliases → /bus@f0000/ethernet@8000000/ethernet-ports/port@1
+      - cpsw_port1   # /__symbols__ fallback → same controller via port node

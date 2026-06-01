@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+#
+# UFS (Universal Flash Storage) boot workflow.
+# The UFS host controller driver is found via DTB analysis.
+# UFS devices appear as /dev/sd* via the SCSI layer — same as USB storage.
+# Anchors cover only the generic SCSI stack above the controller.
+
+name: ufs
+
+# UFS controller initialisation and link training typically takes ~500ms.
+settle_ms: 1000
+
+anchors:
+  - scsi_mod    # SCSI core (pulled in by UFS controller, but listed explicitly)
+  - sd_mod      # SCSI disk driver — exposes UFS LUNs as /dev/sdX
+  - vfat        # FAT filesystem
+  - ext4        # ext4 rootfs

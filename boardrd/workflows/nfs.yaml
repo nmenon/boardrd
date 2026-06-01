@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+#
+# NFS root boot workflow.
+# The Ethernet MAC and PHY drivers are found via DTB analysis.
+# Anchors here cover the NFS protocol stack above the network layer.
+
+name: nfs
+
+# Network settle: allow MAC/PHY probing to complete.
+# DHCP timeout is handled separately by udhcpc -n.
+settle_ms: 500
+
+anchors:
+  - nfs         # NFS client (pulls in sunrpc, auth_rpcgss)
+  - nfsv3       # NFSv3 support
+  # PHY drivers: all bundled because PHY chips are discovered via MDIO ID
+  # at runtime, not via DT compatible strings, so static DTB analysis cannot
+  # determine which one is needed. The modules are small (<50KB each).
+  - ax88796b
+  - bcm54140
+  - bcm7xxx
+  - bcm-phy-lib
+  - broadcom
+  - dp83869
+  - dp83tg720
+  - marvell
+  - microchip
+  - qca808x
+  - smsc
+  - xilinx_gmii2rgmii

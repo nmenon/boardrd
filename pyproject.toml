@@ -1,0 +1,44 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "boardrd"
+version = "0.1.0"
+description = "Board-specific initrd builder for embedded Linux systems"
+license = { text = "GPL-2.0" }
+authors = [
+    { name = "Texas Instruments Incorporated", email = "linux@ti.com" }
+]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "pyyaml",
+    "pylibfdt",
+]
+
+[project.scripts]
+boardrd = "boardrd:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["boardrd*"]
+
+[tool.setuptools.package-data]
+"boardrd.lib"            = ["busybox.config"]
+"boardrd.workflows"      = ["*.yaml"]
+"boardrd.templates"      = ["*.tmpl"]
+"boardrd.boards.arm64.ti" = ["*.yaml"]
+
+# Note: for development, use:  pip install -e .
+# This keeps workflows/, boards/, templates/ in-place so they can be
+# edited without reinstalling. The lib/paths.py resolves all data paths
+# relative to the installed/source location, so both modes work correctly.
+
+[tool.pytest.ini_options]
+# Keep only the last run; avoids accumulating pytest-of-<user>/pytest-N dirs
+tmp_path_retention_count = 0
+tmp_path_retention_policy = "none"

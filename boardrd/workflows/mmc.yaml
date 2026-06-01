@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+#
+# MMC/eMMC/SD boot workflow.
+# The MMC controller driver itself is found via DTB analysis.
+# Anchors here cover the generic MMC block layer and filesystems.
+
+name: mmc
+
+# Milliseconds to wait after Pass 1 module loading before the runtime
+# modalias scan. MMC controllers probe quickly.
+settle_ms: 200
+
+# Entry-point modules for this boot mode.
+# Transitive dependencies resolved automatically via modules.dep at build time.
+anchors:
+  - mmc_block   # generic MMC block device (pulls in mmc_core)
+  - vfat        # FAT filesystem for boot partition
+  - ext4        # ext4 rootfs

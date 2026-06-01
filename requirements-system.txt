@@ -1,0 +1,32 @@
+# System package requirements for boardrd
+# These are OS packages (not pip) required before running boardrd.
+#
+# Debian / Ubuntu:
+#   apt-get install $(grep -v '^#' requirements-system.txt | awk '{print $1}')
+#
+# Fedora / RHEL:
+#   dnf install $(grep -v '^#' requirements-system.txt | awk '{print $3}')
+#
+# Format: <deb-package>  #  <rpm-package>
+
+# --- Always required ---
+cpio          #  cpio          # pack initrd archive
+kmod          #  kmod          # provides depmod (often in /sbin)
+make          #  make          # build busybox
+gzip          #  gzip          # default initrd compression
+
+# --- Optional compression (install whichever you use) ---
+xz-utils      #  xz            # --compression xz
+zstd          #  zstd          # --compression zstd
+
+# --- GCC cross-compilation (--cross-compile aarch64-linux-gnu-) ---
+# gcc-aarch64-linux-gnu   #  gcc-aarch64-linux-gnu
+
+# --- LLVM cross-compilation (--llvm or --musl-root) ---
+clang         #  clang
+lld           #  lld
+llvm          #  llvm          # provides llvm-ar/nm/strip/objcopy/objdump
+
+# --- musl toolchain (--musl-root, download separately) ---
+# wget https://musl.cc/aarch64-linux-musl-cross.tgz
+# tar -xf aarch64-linux-musl-cross.tgz

@@ -1,0 +1,6 @@
+# Runtime dependencies (also declared in pyproject.toml)
+pyyaml
+pylibfdt
+
+# Development / test
+pytest

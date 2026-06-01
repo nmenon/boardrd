@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+
+name: k3-am62l3-evm
+description: Texas Instruments AM62L3 EVM
+
+dtbs:
+  - arch/arm64/boot/dts/ti/k3-am62l3-evm.dtb
+
+workflows:
+  - name: mmc
+    boot_nodes:
+      - mmc0
+      - mmc1

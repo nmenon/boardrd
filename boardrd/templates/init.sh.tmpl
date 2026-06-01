@@ -1,0 +1,256 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+#
+# boardrd init script — auto-generated, do not edit manually.
+# Regenerate by re-running boardrd.py.
+#
+# Boards:    @BOARDS@
+# Workflows: @WORKFLOWS@
+
+export PATH=/sbin:/bin
+
+# Uncomment for verbose execution tracing (debug builds):
+# set -x
+
+log() { echo "boardrd: $*"; }
+die() { echo "boardrd: FATAL: $*"; exec /bin/sh; }
+
+log "init started"
+
+# Mount essential filesystems
+mount -t proc proc /proc       || die "mount proc failed"
+mount -t sysfs sysfs /sys      || die "mount sysfs failed"
+mount -t devtmpfs devtmpfs /dev 2>/dev/null || {
+    mount -t tmpfs -o mode=0755 tmpfs /dev || die "mount tmpfs /dev failed"
+    mknod /dev/console c 5 1
+    mknod /dev/null c 1 3
+    mkdir -p /dev/pts
+}
+log "filesystems mounted (proc sysfs dev)"
+
+# --------------------------------------------------------------------------
+# Parse kernel cmdline
+# --------------------------------------------------------------------------
+BOOTMODE=""
+ROOT=""
+NFSROOT=""
+ROOTFSTYPE=""
+ROOTDELAY=60
+ROOTWAIT=0
+IP=""
+REAL_INIT="/sbin/init"
+RW_FLAG="ro"
+
+for param in $(cat /proc/cmdline); do
+    case "$param" in
+        bootmode=*)   BOOTMODE="${param#bootmode=}" ;;
+        root=*)       ROOT="${param#root=}" ;;
+        nfsroot=*)    NFSROOT="${param#nfsroot=}" ;;
+        rootfstype=*) ROOTFSTYPE="${param#rootfstype=}" ;;
+        rootdelay=*)  ROOTDELAY="${param#rootdelay=}" ;;
+        rootwait)     ROOTWAIT=1 ;;
+        ip=*)         IP="${param#ip=}" ;;
+        init=*)       REAL_INIT="${param#init=}" ;;
+        rw)           RW_FLAG="rw" ;;
+        ro)           RW_FLAG="ro" ;;
+    esac
+done
+
+log "cmdline: $(cat /proc/cmdline)"
+log "root=$ROOT bootmode=$BOOTMODE ip=$IP nfsroot=$NFSROOT"
+
+# --------------------------------------------------------------------------
+# Determine boot mode from root= if not explicitly set via bootmode=
+# --------------------------------------------------------------------------
+if [ -z "$BOOTMODE" ]; then
+    case "$ROOT" in
+        /dev/nfs)              BOOTMODE="nfs" ;;
+        /dev/mmcblk*)          BOOTMODE="mmc" ;;
+        ubi*|/dev/mtdblock*)   BOOTMODE="ospi" ;;
+        # /dev/sd* is ambiguous (UFS or USB) — fall through to auto
+        *)                     BOOTMODE="auto" ;;
+    esac
+fi
+
+# --------------------------------------------------------------------------
+# Helpers
+# --------------------------------------------------------------------------
+load_modules_for_mode() {
+    local mode="$1"
+    local loaded=0 skipped=0
+    grep "^${mode}:" /etc/initrd-modules.conf | while IFS=: read -r _ mod; do
+        if modprobe "$mod" 2>/dev/null; then
+            loaded=$(( loaded + 1 ))
+            log "  loaded: $mod"
+        else
+            skipped=$(( skipped + 1 ))
+        fi
+    done
+}
+
+get_settle_ms() {
+    local mode="$1"
+    local val
+    val=$(grep "^${mode}.settle_ms=" /etc/initrd-modules.conf | cut -d= -f2)
+    echo "${val:-500}"
+}
+
+wait_for_carrier() {
+    local dev="$1"
+    local timeout="${2:-10}"
+    local i=0
+    log "waiting for carrier on $dev (timeout ${timeout}s)"
+    while [ $i -lt "$timeout" ]; do
+        if [ "$(cat /sys/class/net/${dev}/carrier 2>/dev/null)" = "1" ]; then
+            log "carrier up on $dev after ${i}s"
+            return 0
+        fi
+        sleep 1
+        i=$(( i + 1 ))
+    done
+    log "WARNING: no carrier on $dev after ${timeout}s, trying DHCP anyway"
+    return 1
+}
+
+configure_network() {
+    local ip="$1"
+    local client gw mask dev autoconf
+
+    case "$ip" in
+        ""|off|none)
+            return ;;
+        dhcp|on|any|auto)
+            wait_for_carrier eth0
+            timeout 30 udhcpc -n -t 5 -T 3
+            return ;;
+        bootp|rarp|both)
+            wait_for_carrier eth0
+            timeout 30 udhcpc -n -t 5 -T 3
+            return ;;
+        *:*)
+            client=$(echo "$ip" | cut -d: -f1)
+            gw=$(echo "$ip"     | cut -d: -f3)
+            mask=$(echo "$ip"   | cut -d: -f4)
+            dev=$(echo "$ip"    | cut -d: -f6)
+            autoconf=$(echo "$ip" | cut -d: -f7)
+            ;;
+    esac
+
+    dev="${dev:-eth0}"
+    ip link set "$dev" up 2>/dev/null || true
+    wait_for_carrier "$dev"
+
+    case "$autoconf" in
+        dhcp|on|any|auto|bootp|rarp|both)
+            timeout 30 udhcpc -i "$dev" -n -t 5 -T 3
+            [ $? -ne 0 ] && log "udhcpc failed — no DHCP lease on $dev" ;;
+        off|none|"")
+            [ -n "$client" ] && ip addr add "$client/${mask:-24}" dev "$dev"
+            [ -n "$gw"     ] && ip route add default via "$gw" ;;
+    esac
+}
+
+# --------------------------------------------------------------------------
+# PASS 1: load pre-built module list (DTB + workflow derived)
+# --------------------------------------------------------------------------
+SETTLE_MS=500
+
+log "boot mode: $BOOTMODE"
+if [ "$BOOTMODE" = "auto" ]; then
+    MAX_SETTLE=0
+    for mode in @WORKFLOWS@; do
+        log "loading modules for workflow: $mode"
+        load_modules_for_mode "$mode"
+        ms=$(get_settle_ms "$mode")
+        [ "$ms" -gt "$MAX_SETTLE" ] && MAX_SETTLE="$ms"
+    done
+    SETTLE_MS=$MAX_SETTLE
+else
+    log "loading modules for workflow: $BOOTMODE"
+    load_modules_for_mode "$BOOTMODE"
+    SETTLE_MS=$(get_settle_ms "$BOOTMODE")
+fi
+log "Pass 1 done, settling ${SETTLE_MS}ms"
+
+# --------------------------------------------------------------------------
+# Wait for bus enumeration (workflow-specific settle time)
+# --------------------------------------------------------------------------
+sleep_sec=$(( SETTLE_MS / 1000 ))
+sleep_ms=$(( SETTLE_MS % 1000 ))
+sleep "${sleep_sec}.$(printf '%03d' ${sleep_ms})"
+
+log "Pass 2: runtime modalias scan"
+# --------------------------------------------------------------------------
+# PASS 2: runtime modalias scan
+# Pick up devices enabled by bootloader DT fixups/overlays, and devices
+# behind enumerable buses (PCIe, USB) now that controllers are running.
+# --------------------------------------------------------------------------
+for modalias_file in /sys/bus/*/devices/*/modalias; do
+    [ -f "$modalias_file" ] || continue
+    alias=$(cat "$modalias_file" 2>/dev/null) || continue
+    [ -z "$alias" ] && continue
+    modprobe "$alias" 2>/dev/null || true
+done
+
+# --------------------------------------------------------------------------
+# Network configuration (NFS mode)
+# --------------------------------------------------------------------------
+if [ "$BOOTMODE" = "nfs" ]; then
+    log "configuring network: ip=$IP"
+    configure_network "$IP"
+    log "network interfaces after DHCP:"
+    ip link show 2>/dev/null || true
+    ip addr show 2>/dev/null || true
+fi
+
+# --------------------------------------------------------------------------
+# Resolve root device (PARTUUID=/UUID=/LABEL= → /dev/ path)
+# --------------------------------------------------------------------------
+ROOT_DEV="$ROOT"
+case "$ROOT" in
+    PARTUUID=*|UUID=*|LABEL=*)
+        ROOT_DEV=$(findfs "$ROOT" 2>/dev/null) || {
+            echo "boardrd: cannot resolve $ROOT"
+            exec /bin/sh
+        } ;;
+esac
+
+# --------------------------------------------------------------------------
+# Mount real root
+# --------------------------------------------------------------------------
+mkdir -p /mnt/root
+
+if [ "$BOOTMODE" = "nfs" ]; then
+    NFS_SERVER="${NFSROOT%%,*}"
+    NFS_OPTS="${NFSROOT#*,}"
+    [ "$NFS_OPTS" = "$NFSROOT" ] && NFS_OPTS=""
+    log "mounting NFS: server=$NFS_SERVER opts=$NFS_OPTS"
+    mount -t nfs ${NFS_OPTS:+-o $NFS_OPTS} "$NFS_SERVER" /mnt/root || {
+        log "NFS mount failed — dropping to shell"
+        exec /bin/sh
+    }
+else
+    log "waiting for block device: ROOT_DEV=$ROOT_DEV rootwait=$ROOTWAIT delay=$ROOTDELAY"
+    count=0
+    while [ ! -b "$ROOT_DEV" ]; do
+        if [ $ROOTWAIT -eq 0 ] && [ $count -ge $ROOTDELAY ]; then
+            log "timeout waiting for $ROOT_DEV — dropping to shell"
+            exec /bin/sh
+        fi
+        sleep 1
+        count=$(( count + 1 ))
+        [ $(( count % 5 )) -eq 0 ] && log "still waiting for $ROOT_DEV ($count s)"
+    done
+    log "mounting $ROOT_DEV ($RW_FLAG ${ROOTFSTYPE:-auto})"
+    mount -o "$RW_FLAG" ${ROOTFSTYPE:+-t $ROOTFSTYPE} "$ROOT_DEV" /mnt/root || {
+        log "mount failed for $ROOT_DEV — dropping to shell"
+        exec /bin/sh
+    }
+fi
+
+# --------------------------------------------------------------------------
+# Switch to real root
+# --------------------------------------------------------------------------
+log "switching root: $ROOT_DEV → $REAL_INIT"
+exec switch_root /mnt/root "$REAL_INIT"

@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+#
+# USB mass storage boot workflow.
+# The USB host controller driver is found via DTB analysis.
+# Anchors cover the USB storage class driver and SCSI/filesystem stack.
+
+name: usb
+
+# USB host controller enumerates root hub then downstream devices.
+# Full enumeration including device descriptors typically takes 1-2s.
+settle_ms: 2000
+
+anchors:
+  - usb_storage  # USB mass storage class (pulls in scsi_mod, sd_mod)
+  - vfat         # FAT filesystem
+  - ext4         # ext4 rootfs

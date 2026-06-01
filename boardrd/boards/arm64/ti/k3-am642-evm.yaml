@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+
+name: k3-am642-evm
+description: Texas Instruments AM642 EVM
+
+dtbs:
+  - arch/arm64/boot/dts/ti/k3-am642-evm.dtb
+
+workflows:
+  - name: mmc
+    boot_nodes:
+      - mmc0
+      - mmc1
+  - name: nfs
+    boot_nodes:
+      - ethernet0
+      - cpsw_port1

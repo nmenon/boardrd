@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+#
+# OSPI/QSPI SPI-NOR flash boot workflow.
+# The OSPI controller driver is found via DTB analysis.
+# Anchors cover the generic SPI-NOR layer and MTD/filesystem stack.
+
+name: ospi
+
+# SPI-NOR probe is synchronous — controller is ready immediately after load.
+settle_ms: 100
+
+anchors:
+  - spi_nor     # SPI-NOR flash framework
+  - mtdblock    # MTD block device layer
+  - jffs2       # JFFS2 filesystem (common on NOR flash)
+  # Uncomment alternatives as needed:
+  # - ubifs     # UBI filesystem (NAND/NOR)
+  # - squashfs  # SquashFS (read-only, compressed)

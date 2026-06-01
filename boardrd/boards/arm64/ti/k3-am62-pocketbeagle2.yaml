@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+
+name: k3-am62-pocketbeagle2
+description: BeagleBoard.org PocketBeagle 2 (TI AM625)
+
+dtbs:
+  - arch/arm64/boot/dts/ti/k3-am62-pocketbeagle2.dtb
+
+workflows:
+  - name: nfs
+    boot_nodes:
+      - ethernet0
+      - cpsw_port1

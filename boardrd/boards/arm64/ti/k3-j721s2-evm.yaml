@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: GPL-2.0
+# Copyright (C) 2026 Texas Instruments Incorporated - https://www.ti.com/
+
+name: k3-j721s2-evm
+description: Texas Instruments J721S2 EVM
+
+dtbs:
+  - arch/arm64/boot/dts/ti/k3-j721s2-evm.dtb
+
+workflows:
+  - name: mmc
+    boot_nodes:
+      - mmc0
+      - mmc1
+  - name: nfs
+    boot_nodes:
+      - ethernet0
+      - mcu_cpsw
+      - cpsw_port1
